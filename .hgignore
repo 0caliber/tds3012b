@@ -1,0 +1,8 @@
+
+syntax: glob
+log/*.*
+*.bak
+*.pyc
+*.csv
+*.xls
+*.xlsx
