@@ -1,5 +1,5 @@
 
-import	os,	sys
+import    os,    sys
 from DSOGetSamples import *
 
 class DataImporter:
@@ -31,8 +31,8 @@ class DataImporter:
 		chan2 = []
 		try:
 			fi = open(fname, 'r')
-		except	IOError:
-			print	"Can't open Input file %s for Writing."	%	fname	
+		except    IOError:
+			print    "Can't open Input file %s for Writing."    %    fname    
 			return chan1, chan2
 			
 
@@ -53,9 +53,9 @@ class DataImporter:
 		chan2 = []
 		
 		try:
-			fo = open(self.logfname,	'w')
-		except	IOError:
-			print	"Can't open Log file %s for Writing."	%	busfname	
+			fo = open(self.logfname,    'w')
+		except    IOError:
+			print    "Can't open Log file %s for Writing."    %    busfname    
 			del dso
 			return [chan1, chan2]
 			
@@ -74,17 +74,17 @@ class DataImporter:
 
 
 		for idx in range(1, length):
-			volt1	= chan1[idx]
-			volt2	= chan2[idx]
-			line	= "%3.3f, %3.3f\n" %(volt1,	volt2)
+			volt1    = chan1[idx]
+			volt2    = chan2[idx]
+			line    = "%3.3f, %3.3f\n" %(volt1,    volt2)
 			fo.write(line)
 				
 			
-		print	"Raw Table Capture Success!!"	
+		print    "Raw Table Capture Success!!"    
 		fo.close()
 		del dso
 	
 		return [chan1, chan2]
 		pass
-		
-		
+        
+        

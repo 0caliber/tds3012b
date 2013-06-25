@@ -90,3 +90,12 @@ class DSOGetSamples:
 			raise ValueError, "Data Captured too small... some error"
 	
 		return chan
+		
+		
+	def f_TimeBase(self, wfmhdr):
+		
+		fields	=	wfmhdr.split(';')
+		tsample = eval(fields[8])
+		
+		return tsample
+		
