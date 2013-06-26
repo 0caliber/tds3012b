@@ -14,6 +14,9 @@
 #	0.10,	28/02/2012:	Initial
 #--------------------------------------------------
 # http://192.168.2.19/?COMMAND=:WFMPRe?
+#
+# capture.py -b RS232 -l TTL -a 115200 -i Capture.csv -n 0
+#
 
 
 import	re
@@ -108,7 +111,7 @@ baud = 2400
 polarity = 0
 parity = 'N'
 dbits = 8
-sample_period = 400e-6
+sample_period = 964e-9
 
 #	Parameters	parsing
 try:
