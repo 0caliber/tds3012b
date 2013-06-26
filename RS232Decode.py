@@ -12,15 +12,16 @@ class RS232Decode(BusDecode):
 		
 		rxdata = self.f_Threshold(rx)
 		txdata = self.f_Threshold(tx)
-
+		
+		self.f_GetBitDuration(sample_period, baudrate)
+		
 		trx = self.f_Polarity(polarity, rxdata)
 		ttx = self.f_Polarity(polarity, txdata)
 		
 		[vrx, ttrx] = self.f_Decode(sample_period, baudrate, dbits, parity, trx)
 		[vtx, tttx] = self.f_Decode(sample_period, baudrate, dbits, parity, ttx)
 		
-		#print vrx
-		#print vtx
+		print vtx;
 		
 		[statrx, datarx] = self.f_GetBytes(dbits, parity, vrx)
 		[stattx, datatx] = self.f_GetBytes(dbits, parity, vtx)
@@ -47,29 +48,28 @@ class RS232Decode(BusDecode):
 					if prevsig == 1:
 						# Start Condition detected
 						# check for valid digit duration (ignore spikes)
-						vbit = self.f_CheckBitDuration(tdata, idx, sample_period, baud)
+						vbit, skipf = self.f_CheckBitDuration(tdata, idx)
 						if vbit == 0:
 							# valid duration of start bit
 							state = 'START'
 							bitstream.append('S')
-							#bitstream.append(idx)
 							idxstart = idx
 							timestream.append(idx)
-							skipf = bitdur
 							bitcnt = 0
+						else:
+							skipf = 0
 								
 			elif state == 'START':
 				if skipf > 0: 
 					skipf -= 1
 				else:
-					vbit = self.f_CheckBitDuration(tdata, idx, sample_period, baud)
+					vbit, skipf = self.f_CheckBitDuration(tdata, idx)
 					bitstream.append(vbit)
 					if vbit == 'X':
 						skipf = 0
 						state = 'IDLE'	
 						print idx
 					else:
-						skipf = bitdur
 						bitcnt += 1
 						state = 'DATA'
 		
@@ -77,14 +77,14 @@ class RS232Decode(BusDecode):
 				if skipf > 0: 
 					skipf -= 1
 				else:
-					vbit = self.f_CheckBitDuration(tdata, idx, sample_period, baud)
+					vbit, skipf = self.f_CheckBitDuration(tdata, idx)
 					bitstream.append(vbit)
 					if vbit == 'X':
 						skipf = 0
 						state = 'IDLE'	
 					else:
-						skipf = bitdur
 						bitcnt += 1
+						#skipf = bitdur
 						if bitcnt == dbits:
 							if parity == 'N':
 								state = 'STOP'	
@@ -95,11 +95,10 @@ class RS232Decode(BusDecode):
 				if skipf > 0: 
 					skipf -= 1
 				else:
-					vbit = self.f_CheckBitDuration(tdata, idx, sample_period, baud)
+					vbit, skipf = self.f_CheckBitDuration(tdata, idx)
 					if vbit != 'X':
 						bitstream.append(vbit)
 						state = 'STOP'
-						skipf = bitdur
 					else:
 						bitstream.append(vbit)
 						skipf = 0
@@ -110,19 +109,26 @@ class RS232Decode(BusDecode):
 				if skipf > 0: 
 					skipf -= 1
 				else:
-					vbit = self.f_CheckBitDuration(tdata, idx, sample_period, baud)
-					if vbit != 'X':
-						bitstream.append('P')
-						skipf = bitdur
-					else:
+					vbit, skipf = self.f_CheckBitDuration(tdata, idx)
+					#print "Stop ", vbit, skipf
+					if vbit == 'X':
 						bitstream.append(vbit)
 						skipf = 0
+					elif vbit == 0:
+						bitstream.append('E')
+						print "Stop Error ", vbit, skipf, idx
+						skipf = 0
+					else:
+						bitstream.append('P')
+			
+						
 					
 					state = 'IDLE'	
 			else:
 				pass
 				
-		prevsig = currsig
+			prevsig = currsig
+			
 		return bitstream, timestream
 		
 		
@@ -134,42 +140,48 @@ class RS232Decode(BusDecode):
 		
 		return bitstream
 	
-	def f_CheckBitDuration(self, tdata, idx, sample_period, baud_rate):
-		fs = 1/sample_period
-		bitlen = int(round(fs/baud_rate))
+	def f_CheckBitDuration(self, tdata, idx):
 		InitialBit = tdata[idx]
 		result = InitialBit
 		state2 = ''
 		majvot1 = 0.0
 		majvot2 = 0.0
-		for bitidx in range(0, bitlen):
-			if InitialBit != tdata[idx+bitidx]:
-				#result.append(tdata[idx+bitidx])
+		for bitidx in range(0, self.bitlen):
+			mybit = tdata[idx+bitidx]
+			if mybit == 2:
+				mybit = 1
+				
+			if InitialBit != mybit:
 				majvot1 += 1
-				state2 = tdata[idx+bitidx]
+				state2 = mybit
 			else:
 				majvot2 += 1
 			
 		# If initial bit was earlier than actual bit, valid value is the majority
-		if majvot1 > majvot2:
+		if majvot2 < majvot1:
 			InitialBit = state2
 			majvot = majvot1
 		else:
 			majvot = majvot2
-			
-		decision = majvot/bitlen
-		if decision > 0.6:
+		
+		#majvot = majvot2
+		
+		decision = majvot/self.bitlen
+		if decision > 0.5:
 			result = InitialBit
 			pass
 		else:
 			result = 'X'
 			pass
 			
-		return result
+		skip = majvot-1
+		return result, skip
 	
 	def f_GetBitDuration(self, sample_period, baud_rate):
 		fs = 1/sample_period
 		bitlen = int(round(fs/baud_rate))
+		self.bitlen = bitlen
+		
 		return bitlen
 	
 	def f_GetBytes(self, dbits, parity, bitstream):
@@ -386,8 +398,152 @@ class test_basic(unittest.TestCase):
 		
 
 		
+	def test_RealTestTx(self):
+		rxdata = [
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1,
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 2, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1,
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1,
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			1, 1, 1, 1, 1, 1, 1, 1, 
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 
+			0, 0, 0, 0, 0, 0, 0, 0, 
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 
+			
 
-	def test_RealTest(self):
+		]
+		
+		sr = 964e-9
+		baud = 115200
+		parity = 'N'
+		dbits = 8
+		
+		x=RS232Decode()
+		[vrx, vtrx] = x.f_Decode(sr, baud, dbits, parity, rxdata)
+
+		vrefrx = [	'S', 1, 1, 0, 1, 1, 1, 1, 0, 'P', 'S', 1, 0, 0, 0, 0, 1, 1, 0, 'P',
+					'S', 0, 1, 1, 1, 1, 0, 1, 0, 'P', 'S', 1, 0, 1, 1, 1, 1, 0, 0, 'P', 
+					'S', 0, 0, 0, 0, 1, 1, 0, 0, 'P', 'S', 0, 0, 0, 1, 1, 1, 1, 0, 'P',
+					'S', 0, 0, 1, 0, 1, 1, 0, 0, 'P', 'S', 0, 0, 0, 0, 1, 1, 0, 0, 'P',
+					'S', 0, 0, 0, 0, 1, 1, 0, 0, 'P', 'S', 0, 0, 0, 1, 1, 1, 0, 0, 'P'
+					]
+					
+		self.assertEqual(vrx, vrefrx)
+		
+		[stat, data] = x.f_GetBytes(dbits, parity, vrx)
+		vrefdata = ['7B', '61', '5E', '3D', '30', '78', '34', '30', '30', '38']
+		vrefstat = ['OK', 'OK', 'OK', 'OK', 'OK', 'OK', 'OK', 'OK', 'OK', 'OK' ]
+		vrefttx = [65, 152, 238, 325, 412, 499, 586, 672, 759, 846]
+		
+		self.assertEqual(data, vrefdata)
+		self.assertEqual(stat, vrefstat)
+		self.assertEqual(vtrx, vrefttx)
+	
+	
+	def test_RealTestRx(self):
 		rxdata = [ 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 					1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 					
@@ -433,7 +589,7 @@ class test_basic(unittest.TestCase):
 					1, 1, 1, 1, 1, 1, 1, 1, 
 					0, 0, 0, 0, 0, 0, 0, 0, 0, 
 					0, 0, 0, 0, 0, 0, 0, 0, 0, 
-					1, 1, 1, 1, 1, 1, 1, 1, 
+					1, 1, 1, 1, 1, 1, 1, 1,
 					
 					0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 					1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 
@@ -455,7 +611,7 @@ class test_basic(unittest.TestCase):
 		[vrx, vtrx] = x.f_Decode(sr, baud, dbits, parity, rxdata)
 
 		vrefrx = [	'S', 1, 1, 0, 1, 1, 1, 1, 0, 'P', 'S', 1, 0, 0, 0, 0, 1, 1, 0, 'P',
-					'S', 0, 1, 1, 1, 1, 0, 1, 0, 'P', 'S', 0, 0, 1, 0, 1, 1, 0, 0, 'X', 
+					'S', 0, 1, 1, 1, 1, 0, 1, 0, 'P', 'S', 0, 0, 1, 0, 1, 1, 0, 0, 'P', 
 					'S', 0, 1, 1, 0, 0, 0, 1, 0, 'P', 'S', 1, 1, 0, 0, 1, 1, 0, 0, 'P',
 					'S', 1, 0, 1, 1, 1, 1, 1, 0, 'P']
 		self.assertEqual(vrx, vrefrx)
@@ -463,8 +619,11 @@ class test_basic(unittest.TestCase):
 		[stat, data] = x.f_GetBytes(dbits, parity, vrx)
 		vrefdata = ['7B', '61', '5E', '34', '46', '33', '7D']
 		vrefstat = ['OK', 'OK', 'OK', 'OK', 'OK', 'OK', 'OK' ]
+		vrefttx = [ 119, 206, 293, 380, 466, 553, 640]
+		
 		self.assertEqual(data, vrefdata)
 		self.assertEqual(stat, vrefstat)
+		self.assertEqual(vtrx, vrefttx)
 		
 		
 	def test_GetBytesD8PO(self):
@@ -621,10 +780,10 @@ class test_basic(unittest.TestCase):
 		x=RS232Decode()
 		x.f_SetThresholdType('TTL')
 		rxdata = x.f_Threshold(rx)
-		
+		x.f_GetBitDuration(sr, baud)
 		# check valid one
 		idx = 1
-		dur = x.f_CheckBitDuration(rxdata, idx, sr, baud)
+		[dur, skip] = x.f_CheckBitDuration(rxdata, idx)
 		self.assertEqual(1, dur)	
 	
 	def test_BitDurationZero(self):
@@ -634,11 +793,13 @@ class test_basic(unittest.TestCase):
 		
 		x=RS232Decode()
 		x.f_SetThresholdType('TTL')
-		rxdata = x.f_Threshold(rx)	
+		x.f_GetBitDuration(sr, baud)
+		rxdata = x.f_Threshold(rx)
+	
 		
 		# check valid zero
 		idx = 4
-		dur = x.f_CheckBitDuration(rxdata, idx, sr, baud)
+		[dur, skip] = x.f_CheckBitDuration(rxdata, idx)
 		self.assertEqual(0, dur)	
 	
 	def test_BitDurationSpikeOne(self):
@@ -648,11 +809,12 @@ class test_basic(unittest.TestCase):
 		
 		x=RS232Decode()
 		x.f_SetThresholdType('TTL')
+		x.f_GetBitDuration(sr, baud)
 		rxdata = x.f_Threshold(rx)	
 		
 		# check in valid zero
 		idx = 6
-		dur = x.f_CheckBitDuration(rxdata, idx, sr, baud)
+		[dur, skip] = x.f_CheckBitDuration(rxdata, idx)
 		#self.assertEqual('X', dur)		
 		self.assertEqual(0, dur)		
 		
@@ -663,11 +825,12 @@ class test_basic(unittest.TestCase):
 		
 		x=RS232Decode()
 		x.f_SetThresholdType('TTL')
+		x.f_GetBitDuration(sr, baud)
 		rxdata = x.f_Threshold(rx)	
 		
 		# check in valid zero
 		idx = 7
-		dur = x.f_CheckBitDuration(rxdata, idx, sr, baud)
+		[dur, skip] = x.f_CheckBitDuration(rxdata, idx)
 		#self.assertEqual('X', dur)	
 		self.assertEqual(1, dur)	
 
@@ -678,17 +841,52 @@ class test_basic(unittest.TestCase):
 		
 		x=RS232Decode()
 		x.f_SetThresholdType('TTL')
+		x.f_GetBitDuration(sr, baud)
 		rxdata = x.f_Threshold(rx)	
 		
 		# check in valid zero
 		idx = 7
-		dur = x.f_CheckBitDuration(rxdata, idx, sr, baud)
+		[dur, skip] = x.f_CheckBitDuration(rxdata, idx)
 		self.assertEqual(1, dur)	
 		idx = 10
-		dur = x.f_CheckBitDuration(rxdata, idx, sr, baud)
+		[dur, skip] = x.f_CheckBitDuration(rxdata, idx)
 		self.assertEqual(0, dur)		
 	
 	
+	def test_BitDurationSync(self):
+		rxdata = [ 	1, 1, 1, 1, 1, 1, 1, 1, 1, 
+					0, 0, 0, 0, 0, 0, 0, 0, 0, 
+					1, 1, 1, 1, 1, 1, 1, 1, 1, 
+					1, 1, 1, 1, 1, 1, 1, 1, 
+					0, 0, 0, 0, 0, 0, 0, 0, 0, 
+					1, 1, 1, 1, 1, 1, 1, 1, 1, 
+					1, 1, 1, 1, 1, 1, 1, 1, 1, 
+					1, 1, 1, 1, 1, 1, 1, 1, 1, 
+					1, 1, 1, 1, 1, 1, 1, 1, 
+					0, 0, 0, 0, 0, 0, 0, 0, 
+					1, 1, 1, 1, 1, 1, 1, 1, 1, 
+					]
+		sr = 964e-9
+		baud = 115200
+		parity = 'N'
+		dbits = 8
+		
+		x=RS232Decode()
+		x.f_GetBitDuration(sr, baud)
+		
+		idx = 0
+		[dur, skip] = x.f_CheckBitDuration(rxdata, idx)
+		self.assertEqual(1, dur)	
+		self.assertEqual(8, skip)	
+
+		
+		idx = 27
+		[dur, skip] = x.f_CheckBitDuration(rxdata, idx)
+		self.assertEqual(1, dur)	
+		self.assertEqual(7, skip)	
+
+
+					
 	def test_GetBitDuration(self):
 		sr = 2.89E-6
 		baud = 115200

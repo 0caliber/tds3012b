@@ -13,6 +13,7 @@ class BusDecode:
 		self.EdgeDuration = 0		# used to determine sample scale for edge detection
 		self.PulseDurationLo = 0
 		self.PulseDurationHi = 0
+		self.bitlen = 1
 		
 		# Comm defaults
 
