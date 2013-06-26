@@ -149,6 +149,7 @@ if busfname == "":
 
 imp = DataImporter(busfname, 'Capture.csv', gEnable)	
 [ch1, ch2] = imp.f_GetSamples() 
+sample_period = imp.f_GetTBase()
 del imp
 
 print "------------------------------------------------------------------------"
