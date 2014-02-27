@@ -31,10 +31,7 @@ class TWIDecode(BusDecode):
 				if mydata == 'S':
 					state = 'Data'
 					DevAddr = True
-					if line == "" :
-						line = " S-"
-					else:
-						line = "%s - S-" %(line)
+					line = "%sS-" %(line)
 
 				rot = 0
 				byte = 0
@@ -52,11 +49,11 @@ class TWIDecode(BusDecode):
 					rot += 1
 				elif mydata == 'P':
 						# stop
-						line = "%sP" %(line)
+						line = "%sP\n" %(line)
 						state = 'Start'
 				elif mydata == 'S':
 						# start
-						line = "%sS-" %(line)
+						line = "%sR-" %(line)
 						state = 'Data'
 						DevAddr = True
 						rot = 0
@@ -189,65 +186,65 @@ class test_basic(unittest.TestCase):
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9(5C R)-A-P", byte)	
+		self.assertEqual("S-B9(5C R)-A-P\n", byte)	
 
 	def test_GetSingleByteWrAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 0, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B8(5C W)-A-P", byte)	
+		self.assertEqual("S-B8(5C W)-A-P\n", byte)	
 
 		
 	def test_GetSingleByteRdNAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 1, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9(5C R)-N-P", byte)	
+		self.assertEqual("S-B9(5C R)-N-P\n", byte)	
 
 	def test_GetSingleByteWrNAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 0, 1, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B8(5C W)-N-P", byte)	
+		self.assertEqual("S-B8(5C W)-N-P\n", byte)	
 
 		
 	def test_GetMultiByteRdAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9(5C R)-A-EC-A-P", byte)	
+		self.assertEqual("S-B9(5C R)-A-EC-A-P\n", byte)	
 
 	def test_GetMultiByteWrAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B8(5C W)-A-EC-A-P", byte)	
+		self.assertEqual("S-B8(5C W)-A-EC-A-P\n", byte)	
 
 		
 	def test_GetMultiByteNAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9(5C R)-N-EC-A-P", byte)	
+		self.assertEqual("S-B9(5C R)-N-EC-A-P\n", byte)	
 		
 		
 	def test_GetMultiByteRdRestartAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 'S', 1, 1, 1, 0, 1, 1, 0, 1, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9(5C R)-A-S-ED(76 R)-A-P", byte)	
+		self.assertEqual("S-B9(5C R)-A-R-ED(76 R)-A-P\n", byte)	
 
 	def test_GetMultiByteWrRestartAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 'S', 1, 1, 1, 0, 1, 1, 0, 0, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9(5C R)-A-S-EC(76 W)-A-P", byte)	
+		self.assertEqual("S-B9(5C R)-A-R-EC(76 W)-A-P\n", byte)	
 		
 	def test_GetMultiByteRestartNAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 'S', 1, 1, 1, 0, 1, 1, 0, 0, 1, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9(5C R)-A-S-EC(76 W)-N-P", byte)	
+		self.assertEqual("S-B9(5C R)-A-R-EC(76 W)-N-P\n", byte)	
 		
 		
 		
