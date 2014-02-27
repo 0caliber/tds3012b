@@ -24,11 +24,13 @@ class TWIDecode(BusDecode):
 		state = 'Start'
 		byte = 0
 		line = ""
+		DevAddr = False
 		rawbytes = []
 		for mydata in bitstream:
 			if state == 'Start':
 				if mydata == 'S':
 					state = 'Data'
+					DevAddr = True
 					if line == "" :
 						line = " S-"
 					else:
@@ -36,6 +38,7 @@ class TWIDecode(BusDecode):
 
 				rot = 0
 				byte = 0
+			
 				
 			elif state == 'Data':
 					
@@ -55,6 +58,7 @@ class TWIDecode(BusDecode):
 						# start
 						line = "%sS-" %(line)
 						state = 'Data'
+						DevAddr = True
 						rot = 0
 						byte  = 0
 				else:
@@ -63,15 +67,32 @@ class TWIDecode(BusDecode):
 					state = 'Start'
 					rot = 0
 					byte = 0
+						
 					
 				if rot == 8:
 					state = 'AckNack'
+					
+						
 				
 			elif state == 'AckNack':
+				if DevAddr == True:
+					# Translate DevAddr
+					daddr = byte >> 1
+					rd = byte & 0x01
+					if rd == 1:
+						rd_wr = 'R'
+					else:
+						rd_wr = 'W'
+					notestr = "(%02X %c)" %(daddr, rd_wr)
+					# restore state
+					DevAddr = False
+				else:
+					notestr = ''
+					
 				if mydata == 1:
-					line = "%s%02X-N-" %(line, byte)
+					line = "%s%02X%s-N-" %(line, byte, notestr)
 				elif mydata == 0:
-					line = "%s%02X-A-" %(line, byte)
+					line = "%s%02X%s-A-" %(line, byte, notestr)
 					rawbytes.append(byte)
 				rot = 0
 				byte = 0
@@ -164,42 +185,69 @@ class test_basic(unittest.TestCase):
 		self.assertEqual(vref, v)	
 		
 		
-	def test_GetSingleByteAck(self):		
+	def test_GetSingleByteRdAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9-A-P", byte)	
-	
-	def test_GetSingleByteNAck(self):		
+		self.assertEqual(" S-B9(5C R)-A-P", byte)	
+
+	def test_GetSingleByteWrAck(self):		
+		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 0, 0, 'P']
+		x=TWIDecode()
+		byte, bytes = x.f_GetBytes(stream)
+		self.assertEqual(" S-B8(5C W)-A-P", byte)	
+
+		
+	def test_GetSingleByteRdNAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 1, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9-N-P", byte)	
+		self.assertEqual(" S-B9(5C R)-N-P", byte)	
+
+	def test_GetSingleByteWrNAck(self):		
+		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 0, 1, 'P']
+		x=TWIDecode()
+		byte, bytes = x.f_GetBytes(stream)
+		self.assertEqual(" S-B8(5C W)-N-P", byte)	
+
 		
-	def test_GetMultiByteAck(self):		
+	def test_GetMultiByteRdAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9-A-EC-A-P", byte)	
+		self.assertEqual(" S-B9(5C R)-A-EC-A-P", byte)	
+
+	def test_GetMultiByteWrAck(self):		
+		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 'P']
+		x=TWIDecode()
+		byte, bytes = x.f_GetBytes(stream)
+		self.assertEqual(" S-B8(5C W)-A-EC-A-P", byte)	
+
 		
 	def test_GetMultiByteNAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9-N-EC-A-P", byte)	
+		self.assertEqual(" S-B9(5C R)-N-EC-A-P", byte)	
 		
 		
-	def test_GetMultiByteRestartAck(self):		
+	def test_GetMultiByteRdRestartAck(self):		
+		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 'S', 1, 1, 1, 0, 1, 1, 0, 1, 0, 'P']
+		x=TWIDecode()
+		byte, bytes = x.f_GetBytes(stream)
+		self.assertEqual(" S-B9(5C R)-A-S-ED(76 R)-A-P", byte)	
+
+	def test_GetMultiByteWrRestartAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 'S', 1, 1, 1, 0, 1, 1, 0, 0, 0, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9-A-S-EC-A-P", byte)	
+		self.assertEqual(" S-B9(5C R)-A-S-EC(76 W)-A-P", byte)	
 		
 	def test_GetMultiByteRestartNAck(self):		
 		stream = [1, 'S', 1, 0, 1, 1, 1, 0, 0, 1, 0, 'S', 1, 1, 1, 0, 1, 1, 0, 0, 1, 'P']
 		x=TWIDecode()
 		byte, bytes = x.f_GetBytes(stream)
-		self.assertEqual(" S-B9-A-S-EC-N-P", byte)	
+		self.assertEqual(" S-B9(5C R)-A-S-EC(76 W)-N-P", byte)	
 		
 		
 		
