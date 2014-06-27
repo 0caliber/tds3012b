@@ -13,7 +13,9 @@ class RS232Decode(BusDecode):
 		rxdata = self.f_Threshold(rx)
 		txdata = self.f_Threshold(tx)
 		
-		self.f_GetBitDuration(sample_period, baudrate)
+		bitlen = self.f_GetBitDuration(sample_period, baudrate)
+		#print "bitlen: ", bitlen
+		#print rxdata, ";", txdata, ";"
 		
 		trx = self.f_Polarity(polarity, rxdata)
 		ttx = self.f_Polarity(polarity, txdata)
@@ -21,7 +23,8 @@ class RS232Decode(BusDecode):
 		[vrx, ttrx] = self.f_Decode(sample_period, baudrate, dbits, parity, trx)
 		[vtx, tttx] = self.f_Decode(sample_period, baudrate, dbits, parity, ttx)
 		
-		print vtx;
+		print len(ttx), vtx;
+		print len(trx), vrx;
 		
 		[statrx, datarx] = self.f_GetBytes(dbits, parity, vrx)
 		[stattx, datatx] = self.f_GetBytes(dbits, parity, vtx)
@@ -29,21 +32,136 @@ class RS232Decode(BusDecode):
 		retb, rets, reta = self.f_CombineStreams(datarx, statrx, ttrx, datatx, stattx, tttx, sample_period, baudrate)
 		
 		return retb, rets, reta
-				
+	
+	# simpler decoder
+	def f_Decode(self, sample_period, baud, data_bits, parity, tdata):
+		bitstream = []
+		timestream = []
+		state = 'IDLE'
+		prevsig = tdata[1]
+
+		# parity duration in bit time
+		if parity != 'N':
+			pardur_bits = 1
+		else:
+			pardur_bits = 0
 		
-	def f_Decode(self, sample_period, baud, dbits, parity, tdata):
+		stopdur_bits = 1		# default stop duration 1 bit
+		
+		bitdur_samples = self.f_GetBitDuration(sample_period, baud)
+		bitdur_samples -= 1							# just compensate for possible round off values
+		byte_bits = ( 1 + data_bits + pardur_bits + stopdur_bits)		
+		
+		diff = 1
+		skipf = 0
+		idx = diff + 1
+		finish = len(tdata) - bitdur_samples * byte_bits 
+		while idx < finish:
+			currsig = tdata[idx]
+			# on Idle state
+			if currsig == 0:
+				if prevsig == 1:
+					# Start Condition detected
+					# check for valid digit duration (ignore spikes)
+					#print idx
+					idx, bitstream, timestream = self.f_DecodeByte(tdata, idx, bitstream, timestream, byte_bits, bitdur_samples, data_bits, pardur_bits, stopdur_bits)
+				else:
+					idx += 1
+			else:
+				idx += 1
+
+			prevsig = tdata[idx-diff]
+						
+		return bitstream, timestream
+		
+	
+		
+	def f_DecodeByte(self, tdata, idx, bitstream, timestream, byte_bits, bitdur_samples, data_bits, pardur_bits, stopdur_bits):
+		curridx = idx
+		for byteidx in range(0, byte_bits):
+			
+			v_err, v_bit = self.f_DecodeBit(tdata, curridx, bitdur_samples)
+			#print v_err, v_bit
+			
+			if v_err == 0:
+				if byteidx == 0:
+					if v_bit == 0:	# start condiiton detected (should, we got here because of this unless there is a spike)
+						timestream.append(curridx)
+						bitstream.append('S')
+						#print 'S - ', curridx
+					else:
+						bitstream.append('s')
+						curridx += 1
+						break
+				elif byteidx > 0 and byteidx <= (data_bits + pardur_bits): # data + parity
+					bitstream.append(v_bit)
+					#print 'Data - ', curridx, v_bit
+				elif byteidx == (data_bits + pardur_bits + stopdur_bits): # stop bit
+					if v_bit == 1:	# start condiiton detected (should, we got here because of this unless there is a spike)
+						bitstream.append('P')
+						#print 'P - ', curridx
+					else:
+						bitstream.append('E')
+						#print 'E - ', curridx
+						curridx += 1
+						break
+				else:
+					print "boo"
+					pass
+						
+			else:
+				bitstream.append('X')
+				curridx += 1
+				break
+				
+			# update pointer
+			curridx +=  bitdur_samples
+				
+		return curridx, bitstream, timestream
+	
+	
+	def f_DecodeBit(self, tdata, bitidx, bitdur_samples):
+		v_error = 0
+		# span bit scan between +1/4 - 3/4 of the bit width (span 1/2)
+		minidx = bitidx + int(1*bitdur_samples/4)
+		maxidx = bitidx + int(3*bitdur_samples/4)
+		# bit has middle value
+		v_bit = tdata[bitidx + int(2*bitdur_samples/4)]
+		v_cnt = 0
+		
+		for idx in range(minidx, maxidx):
+			if v_bit == tdata[idx]: # should be same in this area
+				v_cnt += 1
+		
+		if v_cnt > int(bitdur_samples/3):
+			pass
+		else:
+			v_error = 1
+			v_bit = 'X'
+			#print 'X: ', minidx, maxidx, bitidx
+			
+		
+		return v_error, v_bit
+		
+	
+	def f_Decode2(self, sample_period, baud, dbits, parity, tdata):
 		bitstream = []
 		timestream = []
 		state = 'IDLE'
 		prevsig = tdata[1]
 		
+		
 		bitdur = self.f_GetBitDuration(sample_period, baud)
 		bitdur -= 1
-		
-		for idx in range(2, len(tdata)):
+		diff = 1
+		skipf = 0
+		idx = diff + 1
+		while idx < len(tdata):
 			currsig = tdata[idx]
 			# on Idle state
+			
 			if state == 'IDLE':
+				#print state, prevsig, currsig
 				if currsig == 0:
 					if prevsig == 1:
 						# Start Condition detected
@@ -54,6 +172,7 @@ class RS232Decode(BusDecode):
 							state = 'START'
 							bitstream.append('S')
 							idxstart = idx
+							print "Start: ", idxstart
 							timestream.append(idx)
 							bitcnt = 0
 						else:
@@ -127,8 +246,12 @@ class RS232Decode(BusDecode):
 			else:
 				pass
 				
-			prevsig = currsig
-			
+			prevsig = tdata[idx-diff]
+			if skipf > 0: 
+				idx += skipf
+			else:
+				idx += 1
+						
 		return bitstream, timestream
 		
 		
@@ -147,9 +270,12 @@ class RS232Decode(BusDecode):
 		majvot1 = 0.0
 		majvot2 = 0.0
 		for bitidx in range(0, self.bitlen):
-			mybit = tdata[idx+bitidx]
-			if mybit == 2:
-				mybit = 1
+			nmybit = tdata[idx+bitidx]
+			if nmybit == 2:
+				#mybit = 1
+				pass
+			else:
+				mybit = nmybit
 				
 			if InitialBit != mybit:
 				majvot1 += 1
@@ -173,15 +299,17 @@ class RS232Decode(BusDecode):
 		else:
 			result = 'X'
 			pass
-			
-		skip = majvot-1
+		
+		#skip = majvot-1
+		skip = self.bitlen
+		print "Majority1: ", majvot1, "Majority2: ", majvot2, "Decision: ", decision, "Skip: ", skip, result
 		return result, skip
 	
 	def f_GetBitDuration(self, sample_period, baud_rate):
 		fs = 1/sample_period
 		bitlen = int(round(fs/baud_rate))
 		self.bitlen = bitlen
-		
+		print bitlen
 		return bitlen
 	
 	def f_GetBytes(self, dbits, parity, bitstream):

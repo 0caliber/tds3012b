@@ -27,7 +27,6 @@ class BusDecode:
 			else:
 				mydigit = 2
 			dataout.append(mydigit)
-		
 		return dataout		
 		pass
 		
@@ -131,8 +130,9 @@ class BusDecode:
 			(self.LevelLo, self.LevelHi) = {
 				"CMOS"		: (1.5, 3.5), 
 				"LVCMOS"	: (1, 2.3),
-				"TTL"   	: (0.7, 2.4),
-				"LVTTL"   	: (0.3, 2)
+				"TTL"   		: (0.7, 2.4),
+				"LVTTL"   	: (0.3, 2),
+				"RS422U"	: (1.7, 2.5)
 				}[std_type]
 		except:
 			print 'Unknown standard, ', std_type

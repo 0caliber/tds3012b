@@ -51,8 +51,8 @@ Optionparams = """
   Options:
     -v : Verbose
     -b : Bus selection: I2C,SPI,RS232
-	-l : Level selection (LVCMOS, LVTTL, CMOS, TTL, RS232)
-    -i : VISA compliant address (ie. TCPIP::10.70.130.207::INSTR)
+	-l : Level selection (LVCMOS, LVTTL, CMOS, TTL, RS232, RS422U)
+    -i : VISA compliant address (ie. TCPIP::10.70.130.207::INSTR) OR filename (ie. capture.csv)
     -f : File CSV appended output
     -t : Delay for acquisition (initial)
     -k : Blank lines to inject at the end of the block, default none
@@ -97,8 +97,8 @@ def f_DisplayI2C(twi, bytes):
 ###################################
 
 #	configuration
-version	=	"V0.12"
-vdate	=	"01/03/2012"
+version	=	"V0.13"
+vdate	=	"27/06/2014"
 gEnable	=	0
 
 busfname = ""

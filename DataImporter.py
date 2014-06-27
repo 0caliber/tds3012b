@@ -64,13 +64,14 @@ class DataImporter:
 		
 		chan1 = []
 		chan2 = []
+		tbase = 1
 		
 		try:
 			fo = open(self.logfname,    'w')
 		except    IOError:
-			print    "Can't open Log file %s for Writing."    %    busfname    
+			print    "Can't open Log file %s for Writing."    %self.logfname    
 			del dso
-			return [chan1, chan2]
+			return [chan1, chan2, tbase]
 			
 		try:
 			dso.f_Setup()
