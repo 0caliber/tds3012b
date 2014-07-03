@@ -80,7 +80,7 @@ class RS232Decode(BusDecode):
 		curridx = idx
 		for byteidx in range(0, byte_bits):
 			
-			v_err, v_bit = self.f_DecodeBit(tdata, curridx, bitdur_samples)
+			v_err, v_bit, curridx = self.f_DecodeBit(tdata, curridx, bitdur_samples)
 			#print v_err, v_bit
 			
 			if v_err == 0:
@@ -91,7 +91,7 @@ class RS232Decode(BusDecode):
 						#print 'S - ', curridx
 					else:
 						bitstream.append('s')
-						curridx += 1
+						#curridx += 1
 						break
 				elif byteidx > 0 and byteidx <= (data_bits + pardur_bits): # data + parity
 					bitstream.append(v_bit)
@@ -103,7 +103,7 @@ class RS232Decode(BusDecode):
 					else:
 						bitstream.append('E')
 						#print 'E - ', curridx
-						curridx += 1
+						#curridx += 1
 						break
 				else:
 					print "boo"
@@ -111,11 +111,11 @@ class RS232Decode(BusDecode):
 						
 			else:
 				bitstream.append('X')
-				curridx += 1
+				#curridx += 1
 				break
 				
 			# update pointer
-			curridx +=  bitdur_samples
+			#curridx +=  bitdur_samples
 				
 		return curridx, bitstream, timestream
 	
@@ -125,23 +125,45 @@ class RS232Decode(BusDecode):
 		# span bit scan between +1/4 - 3/4 of the bit width (span 1/2)
 		minidx = bitidx + int(1*bitdur_samples/4)
 		maxidx = bitidx + int(3*bitdur_samples/4)
-		# bit has middle value
-		v_bit = tdata[bitidx + int(2*bitdur_samples/4)]
-		v_cnt = 0
 		
+		minidx = bitidx
+		maxidx = bitidx + bitdur_samples
+		mididx = bitidx + int(2*bitdur_samples/4)
+		# bit has middle value
+		v_midbit = tdata[mididx]
+		v_startbit = tdata[minidx]
+		
+		# scan from start to middle to find when this bit starts (if start is earlier)
+		for idx in range(minidx, mididx):
+			v_bit = tdata[idx] # detect bit change if any
+			if v_startbit != v_bit:
+				minidx = idx # bit change before reaching the middle value
+				break
+			
+		# Scan to find correct end of bit
+		for idx in range(mididx, maxidx):
+			v_bit = tdata[idx] # detect bit change if any
+			if v_midbit != v_bit:
+				maxidx = idx # bit change before reaching the end, value change earlier
+				break
+		
+		# Check that every bit inside is same
+		v_cnt = 0	
 		for idx in range(minidx, maxidx):
-			if v_bit == tdata[idx]: # should be same in this area
+			if v_midbit == tdata[idx]: # should be same in this area
 				v_cnt += 1
 		
 		if v_cnt > int(bitdur_samples/3):
+			curridx = maxidx
 			pass
 		else:
 			v_error = 1
-			v_bit = 'X'
+			v_midbit = 'X'
+			curridx = bitidx + 1
 			#print 'X: ', minidx, maxidx, bitidx
 			
-		
-		return v_error, v_bit
+		#print v_midbit, curridx, v_error, minidx, maxidx
+		return v_error, v_midbit, curridx
 		
 	
 	def f_Decode2(self, sample_period, baud, dbits, parity, tdata):
@@ -334,9 +356,12 @@ class RS232Decode(BusDecode):
 						#bit zero
 						pass
 				strbyte = "%02X" %byte
-				parbit = bitstream[idx+dbits+1]
-				d = par % 2
-				
+				if idx+dbits+1 > len(bitstream)-1:
+					break
+				else:
+					parbit = bitstream[idx+dbits+1]
+					d = par % 2
+					
 				if parity == 'E':
 					# Parity is even
 					if d == 1:
@@ -382,6 +407,7 @@ class RS232Decode(BusDecode):
 		return stat, data
 		pass
 	
+	# Test: capture.py -b RS232 -l TTL -a 115200 -p N -n 0 -v -i CaptureTTL422.csv
 	def f_CombineStreams(self, rx, rxstat, rxtime , tx, txstat, txtime, sr, baud):
 		ret = ''
 		reta = ''
@@ -389,11 +415,32 @@ class RS232Decode(BusDecode):
 		frm = 0
 		txidx = 0
 		rxidx = 0
+		flagendrx = 0
+		flagendtx = 0
 		while (rxidx < len(rxtime) and txidx < len(txtime)):
-			rxbyte = rx[rxidx]
-			rxcascii = eval("0x%s" %rx[rxidx])
-			txbyte = tx[txidx]
-			txcascii = eval("0x%s" %tx[txidx])
+			
+			# take care of premature data end on Rx
+			if rxidx > len(rx) - 1:
+				rxbyte = ' '
+				rxcascii = ' '
+				rxidx = len(rx) - 1
+				flagendrx = 1
+			else:
+				rxbyte = rx[rxidx]
+				rxcascii = int("0x%s" %rxbyte, 16)
+			
+			# take care of premature data end on Tx
+			if txidx > len(tx) - 1:
+				txbyte = ' '
+				txcascii = ' '
+				txidx = len(tx) - 1
+				flagendtx = 1
+			else:
+				txbyte = tx[txidx]
+				txcascii = int("0x%s" %txbyte, 16)
+			
+			if flagendtx == 1 and flagendrx == 1:
+				break
 			
 			if rxtime[rxidx] < txtime[txidx]:
 				if frm != 1:

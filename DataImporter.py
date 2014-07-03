@@ -16,7 +16,7 @@ class DataImporter:
 			print "Import File: ", fname
 			ch1, ch2, tbase = self.f_FileGet(fname)
 		else:
-			print "Import from DSO: ", fname
+			print "Import from DSO: ", fname, length
 			ch1, ch2, tbase = self.f_DSOGet(fname)
 		
 		print "TBase ", tbase
