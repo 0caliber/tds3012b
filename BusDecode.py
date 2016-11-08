@@ -7,7 +7,7 @@ import unittest
 
 class BusDecode:
 	def __init__(self):
-		print 'Bus Decode'
+		print('Bus Decode')
 		self.LevelLo = 0.7
 		self.LevelHi = 2.7
 		self.EdgeDuration = 0		# used to determine sample scale for edge detection
@@ -68,6 +68,7 @@ class BusDecode:
 		dataout = []
 		newdigit = 0
 		mydigit = 0
+
 		for mydata in thrdata:
 			
 			if state == 0:
@@ -106,9 +107,9 @@ class BusDecode:
 					mydigit = 0
 						
 				pass
-		
+
 			dataout.append(mydigit)
-		
+
 		return dataout		
 		
 		pass
@@ -135,7 +136,7 @@ class BusDecode:
 				"RS422U"	: (1.7, 2.5)
 				}[std_type]
 		except:
-			print 'Unknown standard, ', std_type
+			print ('Unknown standard, ', std_type)
 
 	def f_SetEdgeTimeSamples(self, edgesamples):
 		self.EdgeDuration = edgesamples

@@ -13,13 +13,13 @@ class DataImporter:
 		length = len(fname.split('::'))
 		
 		if length == 1:
-			print "Import File: ", fname
+			print ("Import File: ", fname)
 			ch1, ch2, tbase = self.f_FileGet(fname)
 		else:
-			print "Import from DSO: ", fname, length
+			print ("Import from DSO: ", fname, length)
 			ch1, ch2, tbase = self.f_DSOGet(fname)
 		
-		print "TBase ", tbase
+		print ("TBase ", tbase)
 		self.ch1 = ch1
 		self.ch2 = ch2
 		self.tbase = tbase
@@ -37,7 +37,7 @@ class DataImporter:
 		try:
 			fi = open(fname, 'r')
 		except    IOError:
-			print    "Can't open Input file %s for Writing."    %    fname    
+			print("Can't open Input file %s for Writing."    %    fname)
 			return chan1, chan2
 			
 
@@ -69,7 +69,7 @@ class DataImporter:
 		try:
 			fo = open(self.logfname,    'w')
 		except    IOError:
-			print    "Can't open Log file %s for Writing."    %self.logfname    
+			print("Can't open Log file %s for Writing."    %self.logfname)
 			del dso
 			return [chan1, chan2, tbase]
 			
@@ -80,7 +80,7 @@ class DataImporter:
 			[wfmhdr, data] = dso.f_GetChannel(2)
 			chan2 = dso.f_ScaleVolt(wfmhdr, data)
 			tbase = dso.f_TimeBase(wfmhdr)
-			print "TBase: ", tbase
+			print ("TBase: ", tbase)
 		except IOError:
 			fo.close()
 			del dso
@@ -96,7 +96,7 @@ class DataImporter:
 			fo.write(line)
 				
 			
-		print    "Raw Table Capture Success!!"    
+		print ("Raw Table Capture Success!!")
 		fo.close()
 		del dso
 	

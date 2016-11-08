@@ -4,7 +4,7 @@ from MyPrint import *
 
 class DSOGetSamples:
 	def __init__(self, instr_addr, gEnable, SampleStart=1, SampleStop=10000):
-		print 'DSO Get Samples'
+		print ('DSO Get Samples')
 		
 		self.gEnable = gEnable
 		self.MyPrint = MyPrint(gEnable)
@@ -23,15 +23,17 @@ class DSOGetSamples:
 		#cmd_save	=	"SAVe:EVENTtable:BUS%d	%s"	%(bus,	usbfname)
 		#cmd_get	=	"FILESystem:READFile	%s"	%usbfname
 
-		
+		rm = visa.ResourceManager()
+
+
 		try:
-			self.mso = visa.instrument(instr_addr)
+			self.mso = rm.open_resource(instr_addr)
 		except:
-			print "Cannot Open Instrument %s" %instr_addr
+			print ("Cannot Open Instrument %s" %instr_addr)
 			raise IOError
 		
 		if	self.gEnable	==	1:	
-			print self.mso.ask("*IDN?")
+			print (self.mso.query("*IDN?"))
 			
 			
 	def __del__(self):
@@ -56,7 +58,8 @@ class DSOGetSamples:
 		self.MyPrint.f_Print("Source Channel %d" %chan)
 		self.mso.write(cmd_src)
 		self.MyPrint.f_Print("Get Waveform scaling and headers.")
-		wfmhdr = self.mso.ask(self.cmd_WfmScale)
+		#wfmhdr = self.mso.ask(self.cmd_WfmScale)
+		wfmhdr = self.mso.query(self.cmd_WfmScale)
 		self.MyPrint.f_Print(wfmhdr)
 		self.MyPrint.f_Print("Get Curve Data.")
 		self.mso.write(self.cmd_getraw)
@@ -64,8 +67,8 @@ class DSOGetSamples:
 		try:
 			data = self.mso.read()
 		except:
-			print "Can't Get Curve data."
-			raise IOError, "Can't Get Curve data."
+			print ("Can't Get Curve data.")
+			raise (IOError, "Can't Get Curve data.")
 			
 		return wfmhdr, data
 		
@@ -86,8 +89,8 @@ class DSOGetSamples:
 				volt	= (point - yoff) * ymult + yzero
 				chan.append(volt)
 		else:
-			print "Data Captured too small... some error"
-			raise ValueError, "Data Captured too small... some error"
+			print ("Data Captured too small... some error")
+			raise (ValueError, "Data Captured too small... some error")
 	
 		return chan
 		

@@ -23,8 +23,8 @@ class RS232Decode(BusDecode):
 		[vrx, ttrx] = self.f_Decode(sample_period, baudrate, dbits, parity, trx)
 		[vtx, tttx] = self.f_Decode(sample_period, baudrate, dbits, parity, ttx)
 		
-		print len(ttx), vtx;
-		print len(trx), vrx;
+		print (len(ttx), vtx)
+		print (len(trx), vrx)
 		
 		[statrx, datarx] = self.f_GetBytes(dbits, parity, vrx)
 		[stattx, datatx] = self.f_GetBytes(dbits, parity, vtx)
@@ -106,7 +106,7 @@ class RS232Decode(BusDecode):
 						#curridx += 1
 						break
 				else:
-					print "boo"
+					print ("boo")
 					pass
 						
 			else:
@@ -194,7 +194,7 @@ class RS232Decode(BusDecode):
 							state = 'START'
 							bitstream.append('S')
 							idxstart = idx
-							print "Start: ", idxstart
+							print ("Start: ", idxstart)
 							timestream.append(idx)
 							bitcnt = 0
 						else:
@@ -209,7 +209,7 @@ class RS232Decode(BusDecode):
 					if vbit == 'X':
 						skipf = 0
 						state = 'IDLE'	
-						print idx
+						print (idx)
 					else:
 						bitcnt += 1
 						state = 'DATA'
@@ -257,7 +257,7 @@ class RS232Decode(BusDecode):
 						skipf = 0
 					elif vbit == 0:
 						bitstream.append('E')
-						print "Stop Error ", vbit, skipf, idx
+						print ("Stop Error ", vbit, skipf, idx)
 						skipf = 0
 					else:
 						bitstream.append('P')
@@ -324,14 +324,14 @@ class RS232Decode(BusDecode):
 		
 		#skip = majvot-1
 		skip = self.bitlen
-		print "Majority1: ", majvot1, "Majority2: ", majvot2, "Decision: ", decision, "Skip: ", skip, result
+		print ("Majority1: ", majvot1, "Majority2: ", majvot2, "Decision: ", decision, "Skip: ", skip, result)
 		return result, skip
 	
 	def f_GetBitDuration(self, sample_period, baud_rate):
 		fs = 1/sample_period
 		bitlen = int(round(fs/baud_rate))
 		self.bitlen = bitlen
-		print bitlen
+		print (bitlen)
 		return bitlen
 	
 	def f_GetBytes(self, dbits, parity, bitstream):

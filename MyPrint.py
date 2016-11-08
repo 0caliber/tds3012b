@@ -9,5 +9,5 @@ class MyPrint:
 			s	=	''
 			for	mind in params:
 				s = s + str(mind)
-			print s
+			print (s)
 		

@@ -1,7 +1,7 @@
 #!C:/prog/python24/python.exe
 
 
-#--------------------------------------------------
+# --------------------------------------------------
 #	Python	script	for	Capturing	Raw	Data	on	TDS2014B
 #	Author:	Ilias	Alexopoulos
 #	Company:	Intralot	SA
@@ -9,30 +9,32 @@
 #	Version	0.01
 #	Using	PyVisa	&	ctypes	on	Python	2.4
 #	ctypes	included	in	Python	2.5
-#--------------------------------------------------
+# --------------------------------------------------
 #	Version	History
 #	0.10,	28/02/2012:	Initial
-#--------------------------------------------------
+#	0.90,	21/06/2013: ??
+# 	1.00,	07/11/2016: Added SPI Decode
+# --------------------------------------------------
 # http://192.168.2.19/?COMMAND=:WFMPRe?
 #
 # capture.py -b RS232 -l TTL -a 115200 -i Capture.csv -n 0
 #
 
 
-import	re
-import	os,	sys
-import	time
-import	getopt
+import re
+import os, sys
+import time
+import getopt
 
 from TWIDecode import *
 from RS232Decode import *
+from SPIDecode import *
 from DSOGetSamples import *
 from MyPrint import *
 from DataImporter import *
 
-
-VersionNum = "0.90"
-VersionDate = "2013-06-21"
+VersionNum = "0.91"
+VersionDate = "2016-11-07"
 
 VersionInfo = """
 ---------------------------------------------------------------------------------------------------
@@ -40,7 +42,7 @@ Script for Capturing RAW data from TDS2014 and decode them
 Date: %s, Version: %s
 Written	by Ilias Alexopoulos\n
 ---------------------------------------------------------------------------------------------------
-"""  %(VersionDate, VersionNum)
+""" % (VersionDate, VersionNum)
 
 Usageopt = """
   usage: %s OPTIONS [-v] [-b bus] [-i visa_instr] [-l voltage level] [-f outfile] [-t delay_sec] [-k blank_lines] [-d databits] [-p parity] [-a baud] [-n polarity]
@@ -60,46 +62,45 @@ Optionparams = """
 	-p : RS232: Parity (N, E, O)
 	-d : RS232: Data bits (6,7,8)
 	-n : RS232: Polarity: 0 for postive, 1 for negative (invert)
+	-s : SPI Phase/Polarity: 0:PolPha[00], 1:PolPha[01], 2:PolPha[10], 3:PolPha[11]
+	-m : SPI MSB First: 0: LSB First, 1: MSBFirst
 ---------------------------------------------------------------------------------------------------
 
 """
 
 
-
-def	f_usage(fname):
+def f_usage(fname):
 	global VersionInfo, Optionparams, Usageopt
 
 	v = fname.split("\\")
-	name = v[len(v)-1]
-	print VersionInfo
-	print Usageopt %(name, name)
-	print Optionparams
+	name = v[len(v) - 1]
+	print(VersionInfo)
+	print(Usageopt % (name, name))
+	print(Optionparams)
 
-def f_DisplayI2C(twi, bytes):	
+
+def f_DisplayI2C(twi, bytes):
 	line = ""
 	for b in bytes:
-		line = "%s, %02X" %(line, b)
+		line = "%s, %02X" % (line, b)
 
 	if len(bytes) > 1:
 		i2caddr = bytes[0]
 		devaddr = i2caddr >> 1
-		rw = i2caddr &	0x01
+		rw = i2caddr & 0x01
 		labrw = 'RD' if rw else 'WR'
-		line = "DevAddr: %02X, Operation: %s%s" %(devaddr, labrw, line)
-		print line	
+		line = "DevAddr: %02X, Operation: %s%s" % (devaddr, labrw, line)
+		print(line)
 	else:
-		print "No START condition detected probably. No Data."
+		print("No START condition detected probably. No Data.")
 
-		
 
 ###################################
 #	parsing	params
 ###################################
 
 #	configuration
-version	=	"V0.13"
-vdate	=	"27/06/2014"
-gEnable	=	0
+gEnable = 0
 
 busfname = ""
 levels = 'LVCMOS'
@@ -112,30 +113,46 @@ polarity = 0
 parity = 'N'
 dbits = 8
 sample_period = 964e-9
+polpha = 0
+msbfirst = 1
 
 #	Parameters	parsing
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "v,b:,i:,f:,t:,k:, d:,l:,a:,p:,n:")
+	opts, args = getopt.getopt(sys.argv[1:], "v,b:,i:,f:,t:,k:, d:,l:,a:,p:,n:,s:,m:")
 
-except	getopt.GetoptError:
+except    getopt.GetoptError:
 	f_usage(sys.argv[0])
 	sys.exit(1)
 
 for o, a in opts:
-	#print	o,	a,	opts
-	if   o == '-v': gEnable = 1
-	elif o == '-b': bus = a
-	elif o == '-l': levels = a	
-	elif o == '-i': instr	=	a
-	elif o == '-t': acqdelay = eval(a)
-	elif o == '-f': busfname = a	
-	elif o == '-k': blanklines = eval(a)
-	elif o == '-a': baud = eval(a)
-	elif o == '-n': polarity = eval(a)
-	elif o == '-p': parity = a
-	elif o == '-d': dbits = eval(a)
-	else:	print	'****	Warning:	unknown	option:	',	o
-
+	# print	o,	a,	opts
+	if o == '-v':
+		gEnable = 1
+	elif o == '-b':
+		bus = a
+	elif o == '-l':
+		levels = a
+	elif o == '-i':
+		instr = a
+	elif o == '-t':
+		acqdelay = eval(a)
+	elif o == '-f':
+		busfname = a
+	elif o == '-k':
+		blanklines = eval(a)
+	elif o == '-a':
+		baud = eval(a)
+	elif o == '-n':
+		polarity = eval(a)
+	elif o == '-p':
+		parity = a
+	elif o == '-d':
+		dbits = eval(a)
+	elif o == '-s':
+		polpha = eval(a)
+	elif o == '-m':
+		msbfirst = eval(a)
+	else:    print('****	Warning:	unknown	option:	', o)
 
 MyPrint = MyPrint(gEnable)
 
@@ -147,32 +164,34 @@ MyPrint.f_Print(levels)
 if busfname == "":
 	busfname = instr
 
-imp = DataImporter(busfname, 'Capture.csv', gEnable)	
-[ch1, ch2] = imp.f_GetSamples() 
+imp = DataImporter(busfname, 'Capture.csv', gEnable)
+[ch1, ch2] = imp.f_GetSamples()
 sample_period = imp.f_GetTBase()
 del imp
 
-print "------------------------------------------------------------------------"
+print("------------------------------------------------------------------------")
 
 if bus == 'I2C':
 	decode = TWIDecode()
 	twi, bytes = decode.f_TWIDecode(levels, ch1, ch2)
-	print twi
+	print(twi)
 	f_DisplayI2C(twi, bytes)
+
 elif bus == 'SPI':
-	print "SPI Bus Decode"
-	
+	print("SPI Bus Decode")
+	decode = SPIDecode()
+	bytes = decode.f_SPIDecode(levels, ch1, ch2, polpha, msbfirst)
+	print bytes
+
 elif bus == 'RS232':
-	print "RS232 Bus Decode"
+	print ("RS232 Bus Decode")
 	decode = RS232Decode()
 	[dbin, dstat, dascii] = decode.f_RS232Decode(sample_period, levels, baud, dbits, parity, polarity, ch1, ch2)
-	print dbin
-	print dascii
-	print dstat
+	print (dbin)
+	print (dascii)
+	print (dstat)
 
 else:
-	print "Unknown bus: %s" %bus
+	print ("Unknown bus: %s" % bus)
 
-
-print "------------------------------------------------------------------------"
-	
+print ("------------------------------------------------------------------------")
