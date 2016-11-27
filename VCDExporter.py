@@ -16,11 +16,9 @@ class VCDExporter:
 
 
 	def f_SaveVCD_TWI(self, tbase, ch1, ch2, stream, tim, bitstream):
-		print len(ch1), len(ch2), len(stream), len(tim), len(bitstream)
-		self.f_SaveVCD(tbase, 'TWI', ch1, ch2, stream, tim, bitstream)
-		pass
+		#print len(ch1), len(ch2), len(stream), len(tim), len(bitstream)
+		busname = 'TWI'
 
-	def f_SaveVCD(self, tbase, busname, ch1, ch2, stream1=[], tim = [], bitstream =[]):
 		try:
 			fo = open(self.VCDfname, 'w')
 		except    IOError:
@@ -30,7 +28,7 @@ class VCDExporter:
 		ts = "\n$timescale\n %f s \n$end\n" % tbase
 		sig = "$var real 1 a %s $end\n$var real 1 b %s $end\n" %(self.namech1, self.namech2)
 
-		if len(stream1) > 0:
+		if len(stream) > 0:
 			sig = sig + '$var wire 16 c %s $end\n' %busname
 
 		if len(tim) > 0:
@@ -46,7 +44,7 @@ class VCDExporter:
 		pd2 = 0
 		ps1 = 0
 		idx = 0
-		for d1, d2, s1 in zip(ch1, ch2, stream1):
+		for d1, d2, s1 in zip(ch1, ch2, stream):
 			if pd1 != d1 or pd2 != d2 or ps1 != s1 or currtime == tim[idx]:
 				fo.write("#%f\n" % currtime)
 				if pd1 != d1:
@@ -77,6 +75,56 @@ class VCDExporter:
 					else:
 						#fo.write("b%s c\n" %int(bin(ord(s1))[2:]))
 						pass
+
+			pd1 = d1
+			pd2 = d2
+			ps1 = s1
+			currtime += 1
+
+		fo.close()
+
+
+	def f_SaveVCD_SPI(self, tbase, ch1, ch2, tim=[], bitstream=[]):
+		busname = 'SPI'
+		try:
+			fo = open(self.VCDfname, 'w')
+		except    IOError:
+			print    "Can't open VCD Log file %s for Writing." % self.VCDfname
+
+		ts = "\n$timescale\n %f s \n$end\n" % tbase
+		sig = "$var real 1 a %s $end\n$var real 1 b %s $end\n" % (self.namech1, self.namech2)
+
+		if len(tim) > 0:
+			sig = sig + '$var wire 8 c %s $end\n' % busname
+
+		fo.write(self.hdr)
+		fo.write(ts)
+		fo.write(sig)
+		fo.write("$enddefinitions $end\n")
+
+		currtime = 0
+		pd1 = 0
+		pd2 = 0
+		ps1 = 0
+		idx = 0
+		s1 = 0
+		#print bitstream
+		for d1, d2 in zip(ch1, ch2):
+
+			if pd1 != d1 or pd2 != d2 or currtime == tim[idx]:
+				fo.write("#%f\n" % currtime)
+				if pd1 != d1:
+					fo.write("r%.16g a\n" % d1)
+				if pd2 != d2:
+					fo.write("r%.16g b\n" % d2)
+
+				if currtime == tim[idx]:
+					s1 = bitstream[idx]
+					idx += 1
+					if len(bitstream) - 1 < idx:
+						idx = len(bitstream) - 1
+					#print s1
+					fo.write("b%s c\n" %int(bin(s1)[2:]))
 
 			pd1 = d1
 			pd2 = d2

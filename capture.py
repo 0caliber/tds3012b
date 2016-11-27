@@ -190,7 +190,7 @@ if bus == 'I2C':
 	f_DisplayI2C(twi, bytes)
 	nch1 = 'SCL'
 	nch2 = 'SDA'
-	[vcd, vcdt, stream] = decode.f_TWIGetStream()
+	[vcd, vcdt, vcdd] = decode.f_TWIGetStream()
 
 elif bus == 'SPI':
 	print("SPI Bus Decode")
@@ -199,6 +199,7 @@ elif bus == 'SPI':
 	print bytes
 	nch1 = 'SCLK'
 	nch2 = 'MISO'
+	[vcdt, vcdd] = decode.f_SPIGetStream()
 
 elif bus == 'RS232':
 	print ("RS232 Bus Decode")
@@ -219,8 +220,9 @@ print ("------------------------------------------------------------------------
 
 myvcd = VCDExporter(logname, nch1, nch2)
 if bus == 'I2C':
-	myvcd.f_SaveVCD_TWI(sample_period, ch1, ch2, vcd, vcdt, stream)
+	myvcd.f_SaveVCD_TWI(sample_period, ch1, ch2, vcd, vcdt, vcdd)
 elif bus == 'SPI':
+	myvcd.f_SaveVCD_SPI(sample_period, ch1, ch2, vcdt, vcdd)
 	pass
 elif bus == 'RS232':
 	pass

@@ -26,10 +26,15 @@ class SPIDecode(BusDecode):
 
 		return bytes
 
+	def f_SPIGetStream(self):
+		return [self.vcdt, self.vcdd]
+
 	# Decode edges and data to SPI bytes
 	# default MSB is first
 	def f_SPIParseStream(self, eclk, miso, cpol, cpha, msbfirst = 1):
 		bytes = []
+		self.vcdt = []
+		self.vcdd = []
 
 		if cpol == 0:
 			LeadingEdge = 1
@@ -41,6 +46,7 @@ class SPIDecode(BusDecode):
 		valid = 0
 		bitcnt = 0
 		byte = 0
+		idx = 0
 
 		# Scan full buffer
 		for edge, data in zip(eclk, miso):
@@ -59,6 +65,9 @@ class SPIDecode(BusDecode):
 
 			# valid data, shift and store
 			if valid == 1:
+				if bitcnt == 0:
+					self.vcdt.append(idx)
+					
 				if msbfirst == 1:
 					byte = (byte << 1) + bit
 				else:
@@ -69,9 +78,10 @@ class SPIDecode(BusDecode):
 				# separate bytes
 				if bitcnt == 8:
 					bytes.append("%02X" %byte)
+					self.vcdd.append(byte)
 					bitcnt = 0
 					byte = 0
-
+			idx += 1
 
 		return bytes
 
