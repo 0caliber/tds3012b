@@ -18,7 +18,9 @@
 # http://192.168.2.19/?COMMAND=:WFMPRe?
 #
 # capture.py -b RS232 -l TTL -a 115200 -i Capture.csv -n 0
-#
+# capture.py -b RS232 -l TTL -a 115200 -i CaptureRS422_LVCMOS.csv -n 0
+# capture.py -v -b I2C -i CaptureI2C.csv
+# capture.py -v -b SPI -i CaptureSPI.csv -s 1
 
 
 import re
@@ -26,12 +28,17 @@ import os, sys
 import time
 import getopt
 
+# Diagnostics
+import sys
+import os
+
 from TWIDecode import *
 from RS232Decode import *
 from SPIDecode import *
 from DSOGetSamples import *
 from MyPrint import *
 from DataImporter import *
+from VCDExporter import *
 
 VersionNum = "0.91"
 VersionDate = "2016-11-07"
@@ -61,13 +68,17 @@ Optionparams = """
 	-a : RS232: Baud rate (2400, 19200 etc)
 	-p : RS232: Parity (N, E, O)
 	-d : RS232: Data bits (6,7,8)
-	-n : RS232: Polarity: 0 for postive, 1 for negative (invert)
+	-n : RS232: Polarity: 0 for positive, 1 for negative (invert)
 	-s : SPI Phase/Polarity: 0:PolPha[00], 1:PolPha[01], 2:PolPha[10], 3:PolPha[11]
 	-m : SPI MSB First: 0: LSB First, 1: MSBFirst
 ---------------------------------------------------------------------------------------------------
 
 """
 
+def f_Diag():
+	print(sys.executable)
+	print(os.getcwd())
+	print(sys.path)
 
 def f_usage(fname):
 	global VersionInfo, Optionparams, Usageopt
@@ -115,6 +126,7 @@ dbits = 8
 sample_period = 964e-9
 polpha = 0
 msbfirst = 1
+logname = 'Capture.csv'
 
 #	Parameters	parsing
 try:
@@ -154,8 +166,8 @@ for o, a in opts:
 		msbfirst = eval(a)
 	else:    print('****	Warning:	unknown	option:	', o)
 
+#f_Diag()
 MyPrint = MyPrint(gEnable)
-
 MyPrint.f_Print(instr)
 MyPrint.f_Print(bus)
 MyPrint.f_Print(busfname)
@@ -164,7 +176,7 @@ MyPrint.f_Print(levels)
 if busfname == "":
 	busfname = instr
 
-imp = DataImporter(busfname, 'Capture.csv', gEnable)
+imp = DataImporter(busfname, logname, gEnable)
 [ch1, ch2] = imp.f_GetSamples()
 sample_period = imp.f_GetTBase()
 del imp
@@ -176,12 +188,17 @@ if bus == 'I2C':
 	twi, bytes = decode.f_TWIDecode(levels, ch1, ch2)
 	print(twi)
 	f_DisplayI2C(twi, bytes)
+	nch1 = 'SCL'
+	nch2 = 'SDA'
+	[vcd, vcdt, stream] = decode.f_TWIGetStream()
 
 elif bus == 'SPI':
 	print("SPI Bus Decode")
 	decode = SPIDecode()
 	bytes = decode.f_SPIDecode(levels, ch1, ch2, polpha, msbfirst)
 	print bytes
+	nch1 = 'SCLK'
+	nch2 = 'MISO'
 
 elif bus == 'RS232':
 	print ("RS232 Bus Decode")
@@ -190,8 +207,22 @@ elif bus == 'RS232':
 	print (dbin)
 	print (dascii)
 	print (dstat)
+	nch1 = 'Tx'
+	nch2 = 'Rx'
 
 else:
 	print ("Unknown bus: %s" % bus)
+	nch1 = 'NA'
+	nch2 = 'NA'
 
 print ("------------------------------------------------------------------------")
+
+myvcd = VCDExporter(logname, nch1, nch2)
+if bus == 'I2C':
+	myvcd.f_SaveVCD_TWI(sample_period, ch1, ch2, vcd, vcdt, stream)
+elif bus == 'SPI':
+	pass
+elif bus == 'RS232':
+	pass
+else:
+	pass

@@ -23,15 +23,26 @@ class DSOGetSamples:
 		#cmd_save	=	"SAVe:EVENTtable:BUS%d	%s"	%(bus,	usbfname)
 		#cmd_get	=	"FILESystem:READFile	%s"	%usbfname
 
-		rm = visa.ResourceManager()
+		print("Resource Manager")
 
+		# 'C:\\Windows\\system32\\visa32.dll'
+		# https://github.com/hgrecco/pyvisa/issues/197
+		# http://pyvisa-py.readthedocs.io/en/latest/
+		try:
+			rm = visa.ResourceManager('@py')
+		except OSError:
+			print("Opps!")
+
+		print("Opening Instrument Resource: ", rm)
 
 		try:
 			self.mso = rm.open_resource(instr_addr)
 		except:
 			print ("Cannot Open Instrument %s" %instr_addr)
 			raise IOError
-		
+
+		print("Resource Opened")
+
 		if	self.gEnable	==	1:	
 			print (self.mso.query("*IDN?"))
 			

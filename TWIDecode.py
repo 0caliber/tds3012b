@@ -8,6 +8,9 @@ from BusDecode import *
 class TWIDecode(BusDecode):
 
 	def f_TWIDecode(self, thrlevel, scl, sda):
+		self.vcd = []
+		self.vcdt = []
+		self.vcdd = []
 		self.f_SetThresholdType(thrlevel)
 		self.f_SetEdgeTimeSamples(0)
 		tsda = self.f_Threshold(sda)
@@ -17,15 +20,21 @@ class TWIDecode(BusDecode):
 		cond = self.f_ScanStartStop(tscl, esda)
 		stream = self.f_Decode(escl, tsda, cond)
 		bytes = self.f_GetBytes(stream)
+
+		self.stream = stream
 		
 		return bytes
-	
+
+	def f_TWIGetStream(self):
+		return [self.vcd, self.vcdt, self.vcdd]
+
 	def f_GetBytes(self, bitstream):
 		state = 'Start'
 		byte = 0
 		line = ""
 		DevAddr = False
 		rawbytes = []
+		self.vcdd = []
 		for mydata in bitstream:
 			if state == 'Start':
 				if mydata == 'S':
@@ -91,6 +100,7 @@ class TWIDecode(BusDecode):
 				elif mydata == 0:
 					line = "%s%02X%s-A-" %(line, byte, notestr)
 					rawbytes.append(byte)
+				self.vcdd.append(byte)
 				rot = 0
 				byte = 0
 				
@@ -106,6 +116,10 @@ class TWIDecode(BusDecode):
 		
 	def f_Decode(self, eclk, tdata, cond):
 		bitstream = []
+		self.vcd = []
+		self.vcdt = []
+		pbit = ''
+		bidx = 0
 		for idx in range(0, len(eclk)):
 			edge = eclk[idx]
 			data = tdata[idx]
@@ -119,9 +133,35 @@ class TWIDecode(BusDecode):
 				else:
 					bit = 'X'
 				bitstream.append(bit)
+
+				# For VCD support find Ack/Nack
+				bidx += 1
+				if bit != 'X' and bidx != 9:
+					pbit = '%d' %bit
+					self.vcdt.append(idx)
+				elif bidx == 9:
+					if bit == 0:
+						pbit = 'A'
+					else:
+						pbit = 'N'
+					bidx = 0
+					self.vcdt.append(idx)
+				else:
+					pbit = bit
+
+
 			elif mycond != ' ':
 				bitstream.append(mycond)
-		
+				pbit = mycond
+
+				# For VCD support
+				self.vcdt.append(idx)
+				if mycond == 'S':
+					bidx = 0
+
+			self.vcd.append(pbit)
+
+		#print len(self.vcd), len(self.vcdt)
 		return bitstream
 		
 	def f_ScanStartStop(self, tclk, edata):
