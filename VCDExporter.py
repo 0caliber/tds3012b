@@ -43,18 +43,23 @@ class VCDExporter:
 		pd1 = 0
 		pd2 = 0
 		ps1 = 0
+		tidx = 0
 		idx = 0
-		for d1, d2, s1 in zip(ch1, ch2, stream):
-			if pd1 != d1 or pd2 != d2 or ps1 != s1 or currtime == tim[idx]:
+		print len(tim), len(bitstream), len(stream)
+		for d1, d2 in zip(ch1, ch2):
+			s1 = stream[tidx]
+			if pd1 != d1 or pd2 != d2 or ps1 != s1 or currtime == tim[tidx]:
 				fo.write("#%f\n" % currtime)
 				if pd1 != d1:
 					fo.write("r%.16g a\n" % d1)
 				if pd2 != d2:
 					fo.write("r%.16g b\n" % d2)
-				if ps1 != s1:
+				#if ps1 != s1:
+				if currtime == tim[tidx]:
 					#fo.write("b%s c\n" %int(bin(ord(s1))[2:]))
-
-					if ps1 == 'S' or ps1 == 'A' or ps1 == 'N' or ps1 == 'R' or ps1 == 'X':
+					#print idx, ps1, s1, bitstream[idx]
+					#if ps1 == 'S' or ps1 == 'A' or ps1 == 'N' or ps1 == 'R' or ps1 == 'X':
+					if s1 == 'D':
 						fo.write("b%s d\n" %bin(bitstream[idx])[2:])
 						#print bitstream[idx]
 						asc = hex(bitstream[idx]).upper()
@@ -75,6 +80,12 @@ class VCDExporter:
 					else:
 						#fo.write("b%s c\n" %int(bin(ord(s1))[2:]))
 						pass
+
+					tidx += 1
+					if tidx > len(tim) - 1:
+						tidx = len(tim) - 1
+
+
 
 			pd1 = d1
 			pd2 = d2

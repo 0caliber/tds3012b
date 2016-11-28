@@ -138,7 +138,10 @@ class TWIDecode(BusDecode):
 				bidx += 1
 				if bit != 'X' and bidx != 9:
 					pbit = '%d' %bit
-					self.vcdt.append(idx)
+					if bidx == 2:
+						self.vcdt.append(idx)
+						self.vcd.append('D')
+						print idx, pbit
 				elif bidx == 9:
 					if bit == 0:
 						pbit = 'A'
@@ -146,6 +149,7 @@ class TWIDecode(BusDecode):
 						pbit = 'N'
 					bidx = 0
 					self.vcdt.append(idx)
+					self.vcd.append(pbit)
 				else:
 					pbit = bit
 
@@ -156,10 +160,11 @@ class TWIDecode(BusDecode):
 
 				# For VCD support
 				self.vcdt.append(idx)
+				self.vcd.append(pbit)
 				if mycond == 'S':
 					bidx = 0
 
-			self.vcd.append(pbit)
+
 
 		#print len(self.vcd), len(self.vcdt)
 		return bitstream
