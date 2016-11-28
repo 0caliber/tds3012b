@@ -20,7 +20,7 @@
 # capture.py -b RS232 -l TTL -a 115200 -i Capture.csv -n 0
 # capture.py -b RS232 -l TTL -a 115200 -i CaptureRS422_LVCMOS.csv -n 0
 # capture.py -v -b I2C -i CaptureI2C.csv
-# capture.py -v -b SPI -i CaptureSPI.csv -s 1
+# capture.py -v -b SPI -i CaptureSPI.csv -s 0
 
 
 import re
@@ -210,6 +210,7 @@ elif bus == 'RS232':
 	print (dstat)
 	nch1 = 'Tx'
 	nch2 = 'Rx'
+	[vcdt1, vcdd1, vcdt2, vcdd2] = decode.f_RS232GetStream()
 
 else:
 	print ("Unknown bus: %s" % bus)
@@ -225,6 +226,8 @@ elif bus == 'SPI':
 	myvcd.f_SaveVCD_SPI(sample_period, ch1, ch2, vcdt, vcdd)
 	pass
 elif bus == 'RS232':
+	print len(vcdt1), len(vcdt2), len(vcdd1), len(vcdd2)
+	myvcd.f_SaveVCD_RS232(sample_period, ch1, ch2, vcdt1, vcdd1, vcdt2, vcdd2)
 	pass
 else:
 	pass

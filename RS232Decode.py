@@ -9,7 +9,12 @@ class RS232Decode(BusDecode):
 
 	def f_RS232Decode(self, sample_period, thrlevel, baudrate, dbits, parity, polarity, rx, tx):
 		self.f_SetThresholdType(thrlevel)
-		
+
+		self.vcdt1 = []
+		self.vcdd1 = []
+		self.vcdt2 = []
+		self.vcdd2 = []
+
 		rxdata = self.f_Threshold(rx)
 		txdata = self.f_Threshold(tx)
 		
@@ -21,18 +26,40 @@ class RS232Decode(BusDecode):
 		ttx = self.f_Polarity(polarity, txdata)
 		
 		[vrx, ttrx] = self.f_Decode(sample_period, baudrate, dbits, parity, trx)
+		self.vcdt1 = self.vcdt2 # We always copy data to dt2
+		self.vcdd1 = self.vcdd2 # We always copy data to dt2
+		self.vcdt2 = []
+		self.vcdd2 = []
 		[vtx, tttx] = self.f_Decode(sample_period, baudrate, dbits, parity, ttx)
-		
+
+
 		print (len(ttx), vtx)
 		print (len(trx), vrx)
 		
 		[statrx, datarx] = self.f_GetBytes(dbits, parity, vrx)
 		[stattx, datatx] = self.f_GetBytes(dbits, parity, vtx)
-		
+
+		self.vcdd1 = self.f_RS232PassData(statrx, datarx, self.vcdd1)
+
 		retb, rets, reta = self.f_CombineStreams(datarx, statrx, ttrx, datatx, stattx, tttx, sample_period, baudrate)
 		
 		return retb, rets, reta
-	
+
+	def f_RS232GetStream(self):
+		return [self.vcdt1, self.vcdd1, self.vcdt2, self.vcdd2]
+
+	def f_RS232PassData(selfself, stat, data, vcd):
+		startidx = 0
+		for	s,d in zip(stat, data):
+			for idx in range(startidx, len(vcd)):
+				if vcd[idx] == 'D':
+					vcd[idx] = d
+					#print d
+					startidx = idx
+					break
+
+		return vcd
+
 	# simpler decoder
 	def f_Decode(self, sample_period, baud, data_bits, parity, tdata):
 		bitstream = []
@@ -85,32 +112,47 @@ class RS232Decode(BusDecode):
 			
 			if v_err == 0:
 				if byteidx == 0:
-					if v_bit == 0:	# start condiiton detected (should, we got here because of this unless there is a spike)
+					if v_bit == 0:	# start condition detected (should, we got here because of this unless there is a spike)
 						timestream.append(curridx)
 						bitstream.append('S')
+						self.vcdd2.append('S')
 						#print 'S - ', curridx
 					else:
 						bitstream.append('s')
+						self.vcdd2.append('s')
 						#curridx += 1
 						break
+					self.vcdt2.append(curridx)
 				elif byteidx > 0 and byteidx <= (data_bits + pardur_bits): # data + parity
 					bitstream.append(v_bit)
 					#print 'Data - ', curridx, v_bit
+					if byteidx == 1:
+						self.vcdd2.append('D')
+						self.vcdt2.append(curridx)
+					elif byteidx  == (data_bits -1):
+						if pardur_bits > 0:
+							self.vcdd2.append('R')
+							self.vcdt2.append(curridx)
 				elif byteidx == (data_bits + pardur_bits + stopdur_bits): # stop bit
-					if v_bit == 1:	# start condiiton detected (should, we got here because of this unless there is a spike)
+					if v_bit == 1:	# start condition detected (should, we got here because of this unless there is a spike)
 						bitstream.append('P')
+						self.vcdd2.append('P')
 						#print 'P - ', curridx
 					else:
 						bitstream.append('E')
+						self.vcdd2.append('E')
 						#print 'E - ', curridx
 						#curridx += 1
 						break
+					self.vcdt2.append(curridx)
+					#print curridx
 				else:
 					print ("boo")
 					pass
 						
 			else:
 				bitstream.append('X')
+				self.vcdt2.append(curridx)
 				#curridx += 1
 				break
 				

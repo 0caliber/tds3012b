@@ -67,7 +67,7 @@ class SPIDecode(BusDecode):
 			if valid == 1:
 				if bitcnt == 0:
 					self.vcdt.append(idx)
-					
+
 				if msbfirst == 1:
 					byte = (byte << 1) + bit
 				else:
