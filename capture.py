@@ -40,19 +40,19 @@ from MyPrint import *
 from DataImporter import *
 from VCDExporter import *
 
-VersionNum = "0.91"
-VersionDate = "2016-11-07"
+VersionNum = "0.95"
+VersionDate = "2016-11-29"
 
 VersionInfo = """
 ---------------------------------------------------------------------------------------------------
-Script for Capturing RAW data from TDS2014 and decode them
+Script for Capturing RAW data from TDS2014B and decode them
 Date: %s, Version: %s
 Written	by Ilias Alexopoulos\n
 ---------------------------------------------------------------------------------------------------
 """ % (VersionDate, VersionNum)
 
 Usageopt = """
-  usage: %s OPTIONS [-v] [-b bus] [-i visa_instr] [-l voltage level] [-f outfile] [-t delay_sec] [-k blank_lines] [-d databits] [-p parity] [-a baud] [-n polarity]
+  usage: %s OPTIONS [-v] [--visa] [-b bus] [-i visa_instr] [-l voltage level] [-f outfile] [-t delay_sec] [-k blank_lines] [-d databits] [-p parity] [-a baud] [-n polarity]
   Example: ./%s -v -b I2C -i TCPIP::10.70.130.207::INSTR -f	capture.csv -t 3\n
 """
 
@@ -71,6 +71,7 @@ Optionparams = """
 	-n : RS232: Polarity: 0 for positive, 1 for negative (invert)
 	-s : SPI Phase/Polarity: 0:PolPha[00], 1:PolPha[01], 2:PolPha[10], 3:PolPha[11]
 	-m : SPI MSB First: 0: LSB First, 1: MSBFirst
+	--visa: Use NIVISA or TekVISA. Default uses SOCKETs.
 ---------------------------------------------------------------------------------------------------
 
 """
@@ -127,10 +128,11 @@ sample_period = 964e-9
 polpha = 0
 msbfirst = 1
 logname = 'Capture.csv'
+visarsc = '@py'
 
 #	Parameters	parsing
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "v,b:,i:,f:,t:,k:, d:,l:,a:,p:,n:,s:,m:")
+	opts, args = getopt.getopt(sys.argv[1:], "v,b:,i:,f:,t:,k:,d:,l:,a:,p:,n:,s:,m:", ["visa"])
 
 except    getopt.GetoptError:
 	f_usage(sys.argv[0])
@@ -164,6 +166,8 @@ for o, a in opts:
 		polpha = eval(a)
 	elif o == '-m':
 		msbfirst = eval(a)
+	elif o == 'visa':
+		visarsc = ''
 	else:    print('****	Warning:	unknown	option:	', o)
 
 #f_Diag()
@@ -176,7 +180,7 @@ MyPrint.f_Print(levels)
 if busfname == "":
 	busfname = instr
 
-imp = DataImporter(busfname, logname, gEnable)
+imp = DataImporter(visarsc, busfname, logname, gEnable)
 [ch1, ch2] = imp.f_GetSamples()
 sample_period = imp.f_GetTBase()
 del imp

@@ -25,7 +25,7 @@ class VCDExporter:
 			print    "Can't open VCD Log file %s for Writing." % self.VCDfname
 
 
-		ts = "\n$timescale\n %f s \n$end\n" % tbase
+		ts = "\n$timescale\n %12.9f s \n$end\n" % tbase
 		sig = "$var real 1 a %s $end\n$var real 1 b %s $end\n" %(self.namech1, self.namech2)
 
 		if len(stream) > 0:
@@ -47,7 +47,12 @@ class VCDExporter:
 		idx = 0
 		print len(tim), len(bitstream), len(stream)
 		for d1, d2 in zip(ch1, ch2):
-			s1 = stream[tidx]
+			try:
+				s1 = stream[tidx]
+			except IndexError:
+				s1 = 0
+				tim.append(0)
+
 			if pd1 != d1 or pd2 != d2 or ps1 != s1 or currtime == tim[tidx]:
 				fo.write("#%f\n" % currtime)
 				if pd1 != d1:
@@ -59,28 +64,31 @@ class VCDExporter:
 					#fo.write("b%s c\n" %int(bin(ord(s1))[2:]))
 					#print idx, ps1, s1, bitstream[idx]
 					#if ps1 == 'S' or ps1 == 'A' or ps1 == 'N' or ps1 == 'R' or ps1 == 'X':
-					if s1 == 'D':
-						fo.write("b%s d\n" %bin(bitstream[idx])[2:])
-						#print bitstream[idx]
-						asc = hex(bitstream[idx]).upper()
-						if len(asc) == 3:
-							nib1 = format(ord('0'), '08b')
-							nib2 = format(ord(asc[2:3]), '08b')
+					try:
+						if s1 == 'D':
+							fo.write("b%s d\n" %bin(bitstream[idx])[2:])
+							#print bitstream[idx]
+							asc = hex(bitstream[idx]).upper()
+							if len(asc) == 3:
+								nib1 = format(ord('0'), '08b')
+								nib2 = format(ord(asc[2:3]), '08b')
+							else:
+								nib1= format(ord(asc[2:3]), '08b')
+								nib2 = format(ord(asc[3:4]), '08b')
+							#print nib1, nib2
+							fo.write("b%s%s c\n" %(nib1, nib2))
+							idx += 1
+							if len(bitstream)-1 < idx:
+								idx = len(bitstream)-1
+							#print currtime, idx,bitstream[idx]
+						elif s1 == 'S' or s1 == 'P' or s1 == 'A' or s1 == 'N' or s1 == 'X' or s1 == 'R':
+							fo.write("b%s c\n" % int(bin(ord(s1))[2:]))
 						else:
-							nib1= format(ord(asc[2:3]), '08b')
-							nib2 = format(ord(asc[3:4]), '08b')
-						#print nib1, nib2
-						fo.write("b%s%s c\n" %(nib1, nib2))
-						idx += 1
-						if len(bitstream)-1 < idx:
-							idx = len(bitstream)-1
-						#print currtime, idx,bitstream[idx]
-					elif s1 == 'S' or s1 == 'P' or s1 == 'A' or s1 == 'N' or s1 == 'X' or s1 == 'R':
-						fo.write("b%s c\n" % int(bin(ord(s1))[2:]))
-					else:
-						#fo.write("b%s c\n" %int(bin(ord(s1))[2:]))
+							#fo.write("b%s c\n" %int(bin(ord(s1))[2:]))
+							pass
+					except IndexError:
 						pass
-
+						
 					tidx += 1
 					if tidx > len(tim) - 1:
 						tidx = len(tim) - 1

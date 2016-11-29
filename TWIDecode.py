@@ -120,6 +120,7 @@ class TWIDecode(BusDecode):
 		self.vcdt = []
 		pbit = ''
 		bidx = 0
+		bit1idx = 0
 		for idx in range(0, len(eclk)):
 			edge = eclk[idx]
 			data = tdata[idx]
@@ -138,10 +139,12 @@ class TWIDecode(BusDecode):
 				bidx += 1
 				if bit != 'X' and bidx != 9:
 					pbit = '%d' %bit
-					if bidx == 2:
-						self.vcdt.append(idx)
+					if bidx == 1:
+						bit1idx = idx
+					elif bidx == 2:
+						self.vcdt.append(bit1idx)
 						self.vcd.append('D')
-						print idx, pbit
+						#print idx, pbit
 				elif bidx == 9:
 					if bit == 0:
 						pbit = 'A'

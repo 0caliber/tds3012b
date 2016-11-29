@@ -4,7 +4,7 @@ import re
 from DSOGetSamples import *
 
 class DataImporter:
-	def __init__(self, fname, logname, gEnable):
+	def __init__(self, visarsc, fname, logname, gEnable):
 
 		self.gEnable = gEnable
 		self.logfname = logname
@@ -17,7 +17,7 @@ class DataImporter:
 			ch1, ch2, tbase = self.f_FileGet(fname)
 		else:
 			print ("Import from DSO: ", fname, length)
-			ch1, ch2, tbase = self.f_DSOGet(fname)
+			ch1, ch2, tbase = self.f_DSOGet(visarsc, fname)
 		
 		print ("TBase ", tbase)
 		self.ch1 = ch1
@@ -59,8 +59,8 @@ class DataImporter:
 		return chan1, chan2, tbase
 		pass
 	
-	def f_DSOGet(self, instr):
-		dso = DSOGetSamples(instr, self.gEnable)
+	def f_DSOGet(self, visarsc, instr):
+		dso = DSOGetSamples(visarsc, instr, self.gEnable)
 		
 		chan1 = []
 		chan2 = []

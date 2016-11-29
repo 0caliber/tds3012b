@@ -3,7 +3,7 @@ import	visa
 from MyPrint import *
 
 class DSOGetSamples:
-	def __init__(self, instr_addr, gEnable, SampleStart=1, SampleStop=10000):
+	def __init__(self, visarsc, instr_addr, gEnable, SampleStart=1, SampleStop=10000):
 		print ('DSO Get Samples')
 		
 		self.gEnable = gEnable
@@ -20,6 +20,7 @@ class DSOGetSamples:
 		self.cmd_acq	=	"ACQUIRE:STATE STOP"
 		self.cmd_WfmScale = "WFMPRe?"
 		self.cmd_getraw	=	"CURVe?"
+		self.ver		= 15
 		#cmd_save	=	"SAVe:EVENTtable:BUS%d	%s"	%(bus,	usbfname)
 		#cmd_get	=	"FILESystem:READFile	%s"	%usbfname
 
@@ -29,7 +30,7 @@ class DSOGetSamples:
 		# https://github.com/hgrecco/pyvisa/issues/197
 		# http://pyvisa-py.readthedocs.io/en/latest/
 		try:
-			rm = visa.ResourceManager('@py')
+			rm = visa.ResourceManager(visarsc) #'@py'
 		except OSError:
 			print("Opps!")
 
@@ -37,14 +38,21 @@ class DSOGetSamples:
 
 		try:
 			self.mso = rm.open_resource(instr_addr)
+			self.ver = 18		# New version of PyVisa
+		except AttributeError:
+								# Old Version of PyVISA <1.5
+			self.mso = visa.instrument(instr_addr)
 		except:
 			print ("Cannot Open Instrument %s" %instr_addr)
 			raise IOError
 
 		print("Resource Opened")
 
-		if	self.gEnable	==	1:	
-			print (self.mso.query("*IDN?"))
+		if	self.gEnable ==	1:	
+			if self.ver == 18:
+				print (self.mso.query("*IDN?"))
+			else:
+				print(self.mso.ask("*IDN?"))
 			
 			
 	def __del__(self):
@@ -69,8 +77,10 @@ class DSOGetSamples:
 		self.MyPrint.f_Print("Source Channel %d" %chan)
 		self.mso.write(cmd_src)
 		self.MyPrint.f_Print("Get Waveform scaling and headers.")
-		#wfmhdr = self.mso.ask(self.cmd_WfmScale)
-		wfmhdr = self.mso.query(self.cmd_WfmScale)
+		if self.ver == 15:
+			wfmhdr = self.mso.ask(self.cmd_WfmScale)
+		else:
+			wfmhdr = self.mso.query(self.cmd_WfmScale)
 		self.MyPrint.f_Print(wfmhdr)
 		self.MyPrint.f_Print("Get Curve Data.")
 		self.mso.write(self.cmd_getraw)
