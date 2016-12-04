@@ -110,7 +110,8 @@ class VCDExporter:
 		except    IOError:
 			print    "Can't open VCD Log file %s for Writing." % self.VCDfname
 
-		ts = "\n$timescale\n %f s \n$end\n" % tbase
+		ts = "\n$timescale\n %12.9f s \n$end\n" % tbase
+		#print tbase
 		sig = "$var real 1 a %s $end\n$var real 1 b %s $end\n" % (self.namech1, self.namech2)
 
 		if len(tim) > 0:
@@ -122,6 +123,7 @@ class VCDExporter:
 		fo.write("$enddefinitions $end\n")
 
 		currtime = 0
+		ctf = 0
 		pd1 = 0
 		pd2 = 0
 		ps1 = 0
@@ -131,7 +133,7 @@ class VCDExporter:
 		for d1, d2 in zip(ch1, ch2):
 
 			if pd1 != d1 or pd2 != d2 or currtime == tim[idx]:
-				fo.write("#%f\n" % currtime)
+				fo.write("#%d\n" % currtime)
 				if pd1 != d1:
 					fo.write("r%.16g a\n" % d1)
 				if pd2 != d2:
@@ -149,6 +151,7 @@ class VCDExporter:
 			pd2 = d2
 			ps1 = s1
 			currtime += 1
+			ctf += tbase
 
 		fo.close()
 
@@ -161,7 +164,7 @@ class VCDExporter:
 		except    IOError:
 			print    "Can't open VCD Log file %s for Writing." % self.VCDfname
 
-		ts = "\n$timescale\n %f s \n$end\n" % tbase
+		ts = "\n$timescale\n %12.9f s \n$end\n" % tbase
 		sig = "$var real 1 a %s $end\n$var real 1 b %s $end\n" %(self.namech1, self.namech2)
 
 		if len(tim1) > 0:
