@@ -6,3 +6,6 @@ log/*.*
 *.csv
 *.xls
 *.xlsx
+build/**
+dist/**
+Capture.vcd

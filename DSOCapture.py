@@ -12,6 +12,7 @@
 #	0.10,	28/02/2012:	Initial
 #	0.90,	21/06/2013: ??
 # 	1.00,	07/11/2016: Added SPI Decode
+#   1.10,   04/03/2017: Added Licensing and Text
 # --------------------------------------------------
 # http://192.168.2.19/?COMMAND=:WFMPRe?
 #
@@ -45,14 +46,16 @@ from MyPrint import *
 from DataImporter import *
 from VCDExporter import *
 
-VersionNum = "0.95"
-VersionDate = "2016-11-29"
+VersionNum = "1.10"
+VersionDate = "2017-04-03"
 
 VersionInfo = """
 ---------------------------------------------------------------------------------------------------
 Script for Capturing RAW data from TDS2014B and decode them
 Date: %s, Version: %s
 Written	by Ilias Alexopoulos\n
+Ilialex Research Lab\n
+Copyright (c) 2017\n
 ---------------------------------------------------------------------------------------------------
 """ % (VersionDate, VersionNum)
 
