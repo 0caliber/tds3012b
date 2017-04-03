@@ -1,3 +1,8 @@
+# License conditions are given in LICENSE.TXT
+# This code is licnesed under the MIT License 
+# Copyright (c) 2017 Ilialex Research Lab
+# www.ilialex.gr, blog.ilialex.gr
+#
 
 class MyPrint:
 	def __init__(self, gEnable):

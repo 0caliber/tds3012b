@@ -1,6 +1,4 @@
 #!C:/prog/python24/python.exe
-
-
 # --------------------------------------------------
 #	Python	script	for	Capturing	Raw	Data	on	TDS2014B
 #	Author:	Ilias	Alexopoulos
@@ -21,6 +19,13 @@
 # capture.py -b RS232 -l TTL -a 115200 -i CaptureRS422_LVCMOS.csv -n 0
 # capture.py -v -b I2C -i CaptureI2C.csv
 # capture.py -v -b SPI -i CaptureSPI.csv -s 0
+#
+# License conditions are given in LICENSE.TXT
+# This code is licnesed under the MIT License 
+# Copyright (c) 2017 Ilialex Research Lab
+# www.ilialex.gr, blog.ilialex.gr
+#
+#
 
 
 import re

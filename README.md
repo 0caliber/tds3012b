@@ -41,7 +41,6 @@ $ hg clone https://bitbucket.org/ialexo/tds3012 tds3012
 ```
 
 This will clone this repository to tds3012 folder in your system.
-Note that you have to use your own user name and password.
 
 
 
@@ -72,6 +71,9 @@ You will need the following to be able to run the script.
 * VISA Libraries (Either from National Instruments [NIVISA](https://www.ni.com/visa/) or from Tektronix [TekVISA](http://uk.tek.com/oscilloscope/tds7054-software))
 * PyVISA module [PyVISA](https://pyvisa.readthedocs.io/en/stable/)
 
+License:
+This code is licensed under the MIT License.
+See License file.
 
 ## Contribution guidelines ##
 
