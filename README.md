@@ -1,7 +1,5 @@
 # README #
 
-[TOC]
-
 ## Introduction
 This is about a script I use to gather and decode serial data from my Tektronix TDS2014B (two channel) Digital Oscilloscope.
 The oscilloscope is connected to gather TWI, SPI or RS232 data and the script acquires and decodes to a human readable format.
@@ -12,7 +10,11 @@ The output provided is:
 * CSV file to check on Excel or any other compatible tool
 * Recently added VCD format to use with GTKWave
 
-This is a command line tool, without any GUI.
+This is a command line tool, without any GUI. Use GTKWave for display waveforms.
+Originally placed on BitBucket as a Mercurial Repo, now converted to git.
+
+[CodeProject Article](https://www.codeproject.com/Articles/1192624/Decoding-Serial-Busses-from-Digital-Oscilloscope)
+
 
 ## What is this repository for? ##
 
@@ -83,5 +85,3 @@ See License file.
 
 ### Who do I talk to? ###
 
-* Repo owner or admin
-[Ilias](https://bitbucket.org/ialexo/)
