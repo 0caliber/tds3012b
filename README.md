@@ -15,6 +15,8 @@ Originally placed on BitBucket as a Mercurial Repo, now converted to git.
 
 [CodeProject Article](https://www.codeproject.com/Articles/1192624/Decoding-Serial-Busses-from-Digital-Oscilloscope)
 
+![github_serdecode](https://user-images.githubusercontent.com/75543687/200642024-d0a7ff2a-2131-4879-87e4-fdd4e228de83.jpg)
+
 
 ## What is this repository for? ##
 
@@ -39,7 +41,7 @@ See Dependencies below.
 Go ahead and try:
 
 ```
-$ hg clone https://bitbucket.org/ialexo/tds3012 tds3012
+$ git clone git@github.com:0caliber/tds3012b.git
 ```
 
 This will clone this repository to tds3012 folder in your system.
